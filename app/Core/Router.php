@@ -1,18 +1,5 @@
 <?php
 
-<<<<<<< HEAD
-namespace Src\Core;
-use RuntimeException;
-use Closure;
-
-class Router
-{
-    private static array $routes = [];
-    private static $router;
-    private function __construct()
-    {
-    }
-=======
 class Router
 {
     /**
@@ -37,7 +24,6 @@ class Router
      * 
      * @return Router The singleton instance of the Router.
      */
->>>>>>> 74a6cbdd19201a3dfddf36b16d16138bc89bd22f
     public static function getRouter(): Router
     {
         if (!isset(self::$router)) {
@@ -47,14 +33,6 @@ class Router
 
         return self::$router;
     }
-<<<<<<< HEAD
-    private function register(string $route, string $method, array|callable $action)
-    {
-        $route = trim($route, '/');
-
-        self::$routes[$method][$route] = $action;
-    }
-=======
 
     /**
      * prevent cloning of the singleton instance.
@@ -80,7 +58,6 @@ class Router
         self::$routes[$method][$route] = $action;
     }
 
->>>>>>> 74a6cbdd19201a3dfddf36b16d16138bc89bd22f
     public function get(string $route, array|callable $action)
     {
         $this->register($route, 'GET', $action);
@@ -97,34 +74,6 @@ class Router
     {
         $this->register($route, 'DELETE', $action);
     }
-<<<<<<< HEAD
-    public function dispatch()
-    {
-        $requestedRoute = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
-
-        $method = $_SERVER['REQUEST_METHOD'];
-        $routes = self::$routes[$method] ?? [];
-
-        foreach ($routes as $route => $action) {
-            $routeRegex = preg_replace_callback('/{\w+(:([^}]+))?}/', function ($matches) {
-                return isset($matches[1]) ? '(' . $matches[2] . ')' : '([a-zA-Z0-9_-]+)';
-            }, $route);
-
-            $routeRegex = '@^' . $routeRegex . '$@';
-
-            if (preg_match($routeRegex, $requestedRoute, $matches)) {
-                array_shift($matches);
-                $routeParamsValues = $matches;
-
-                $routeParamsNames = [];
-                if (preg_match_all('/{(\w+)(:[^}]+)?}/', $route, $matches)) {
-                    $routeParamsNames = $matches[1];
-                }
-
-                $routeParams = array_combine($routeParamsNames, $routeParamsValues);
-
-                return $this->resolveAction($action, $routeParams);
-=======
 
     /**
      * Resolve the current request to the corresponding route action.
@@ -166,28 +115,10 @@ class Router
                 $routeParams = array_combine($routeParamsNames, $routeParamsValues);
 
                 return  $this->resolveAction($action, $routeParams);
->>>>>>> 74a6cbdd19201a3dfddf36b16d16138bc89bd22f
             }
         }
         return $this->abort('404 Page not found');
     }
-<<<<<<< HEAD
-    private function resolveAction($action, array $routeParams): mixed
-    {
-        if ($action instanceof Closure) {
-            return $action(...array_values($routeParams));
-        }
-
-        if (is_array($action) && count($action) === 2) {
-            return call_user_func_array(
-                [new $action[0], $action[1]],
-                array_values($routeParams)
-            );
-        }
-
-        throw new RuntimeException('Invalid route action');
-    }
-=======
 
     /**
      * Execute the action for a matched route.
@@ -216,7 +147,6 @@ class Router
      * @param int $code HTTP response code.
      * 
      */
->>>>>>> 74a6cbdd19201a3dfddf36b16d16138bc89bd22f
     private function abort(string $message, int $code = 404)
     {
 
@@ -224,11 +154,6 @@ class Router
         echo $message;
         exit();
     }
-<<<<<<< HEAD
-
-}
-=======
 }
 
 ?>
->>>>>>> 74a6cbdd19201a3dfddf36b16d16138bc89bd22f
