@@ -1,7 +1,7 @@
 <?php
 
 
-namespace App\Core;
+namespace App\Helpers;
 
 use App\Config\Database;
 use PDO;

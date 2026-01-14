@@ -2,6 +2,7 @@
 
 namespace App\Models;
 use App\Core\BaseModel;
+use App\Helpers\Security;
 use DateTime;
 abstract class User extends BaseModel
 {
@@ -20,9 +21,9 @@ abstract class User extends BaseModel
 
     public function findByEmail(string $email): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE email = :email LIMIT 1");
-        $stmt->execute(['email' => $email]);
-        $result = $stmt->fetch();
+        $sql = "SELECT * FROM {$this->table} WHERE email = :email LIMIT 1";
+        $stmt = Security::secureQuery($sql, ['email' => $email]);
+        $result = $stmt ? $stmt->fetch() : false;
 
         return $result ?: null;
     }
@@ -34,7 +35,7 @@ abstract class User extends BaseModel
     public function createUser(array $data): int
     {
         if (isset($data['password'])) {
-            $data['password_hash'] = password_hash($data['password'], PASSWORD_BCRYPT);
+            $data['password_hash'] = Security::hashPassword($data['password']);
             unset($data['password']);
         }
 
@@ -47,13 +48,13 @@ abstract class User extends BaseModel
 
     public function updatePassword(int $id, string $newPassword): bool
     {
-        $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
+        $passwordHash = Security::hashPassword($newPassword);
         return $this->update($id, ['password_hash' => $passwordHash]);
     }
 
     public function verifyPassword(string $password, string $passwordHash): bool
     {
-        return password_verify($password, $passwordHash);
+        return Security::verifyPassword($password, $passwordHash);
     }
     public function emailExists(string $email): bool
     {
@@ -67,7 +68,7 @@ abstract class User extends BaseModel
             return null;
         }
 
-        if ($this->verifyPassword($password, $user['password_hash'])) {
+        if (Security::verifyPassword($password, $user['password_hash'])) {
             unset($user['password_hash']);
             return $user;
         }
