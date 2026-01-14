@@ -98,7 +98,7 @@ class Router
             }
         }
 
-        return $this->abort('404 Page not found', 404);
+        $this->abort('404 Page not found', 404);
     }
 
     /**
@@ -119,10 +119,10 @@ class Router
             );
         }
 
-        return $this->abort('Invalid route action', 500);
+        $this->abort('Invalid route action', 500);
     }
 
-    private function abort(string $message, int $code = 404): void
+    private function abort(string $message, int $code = 404): never
     {
         http_response_code($code);
         echo $message;
