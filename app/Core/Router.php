@@ -1,159 +1,131 @@
 <?php
 
+namespace App\Core;
+
+use Closure;
+
 class Router
 {
     /**
-     * @var array $routes Stores all registered routes.
+     * Stores all registered routes.
+     * @var array<string, array<string, array|callable>>
      */
     private static array $routes = [];
 
     /**
-     * @var Router|null $router Singleton instance of the Router.
+     * Singleton instance.
      */
-    private static $router;
+    private static ?Router $router = null;
 
-    /**
-     * Private constructor to prevent direct instantiation.
-     */
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 
-    /**
-     * Get the singleton instance of the Router.
-     * 
-     * @return Router The singleton instance of the Router.
-     */
     public static function getRouter(): Router
     {
-        if (!isset(self::$router)) {
-
+        if (!self::$router) {
             self::$router = new Router();
         }
 
         return self::$router;
     }
 
-    /**
-     * prevent cloning of the singleton instance.
-     */
-
-    private function __clone()
-    {
-    }
+    private function __clone() {}
 
     /**
-     * Register a route with a specified HTTP method and action.
-     * 
-     * @param string $route The route path.
-     * @param string $method The HTTP method (GET, POST, PUT, DELETE).
-     * @param array|callable $action The action to execute for the route.
+     * Register a route with an HTTP method and action.
      */
-    private function register(string $route, string $method, array|callable $action)
+    private function register(string $route, string $method, array|callable $action): void
     {
-        // Trim slashes
         $route = trim($route, '/');
-
-        // Assign action to the passed route
         self::$routes[$method][$route] = $action;
     }
 
-    public function get(string $route, array|callable $action)
+    public function get(string $route, array|callable $action): void
     {
         $this->register($route, 'GET', $action);
     }
-    public function post(string $route, array|callable $action)
+
+    public function post(string $route, array|callable $action): void
     {
         $this->register($route, 'POST', $action);
     }
-    public function put(string $route, array|callable $action)
+
+    public function put(string $route, array|callable $action): void
     {
         $this->register($route, 'PUT', $action);
     }
-    public function delete(string $route, array|callable $action)
+
+    public function delete(string $route, array|callable $action): void
     {
         $this->register($route, 'DELETE', $action);
     }
 
     /**
-     * Resolve the current request to the corresponding route action.
-     * 
+     * Dispatch the current request.
      */
-    public function dispatch()
+    public function dispatch(): mixed
     {
-        // Get the requested route.
-        $requestedRoute = trim($_SERVER['REQUEST_URI'], '/') ?? '/';
+        // Only match the path, not query string
+        $requestedRoute = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/', '/');
+        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-        $routes = self::$routes[$_SERVER['REQUEST_METHOD']];
+        $routes = self::$routes[$method] ?? [];
 
-        foreach ($routes as $route => $action)
-        {
-            // Transform route to regex pattern.
-            $routeRegex = preg_replace_callback('/{\w+(:([^}]+))?}/', function ($matches)
-            {
+        foreach ($routes as $route => $action) {
+            // Convert route placeholders to regex
+            // {id} -> ([a-zA-Z0-9_-]+)
+            // {id:\d+} -> (\d+)
+            $routeRegex = preg_replace_callback('/{\w+(:([^}]+))?}/', function ($matches) {
                 return isset($matches[1]) ? '(' . $matches[2] . ')' : '([a-zA-Z0-9_-]+)';
             }, $route);
 
-            // Add the start and end delimiters.
             $routeRegex = '@^' . $routeRegex . '$@';
 
-            // Check if the requested route matches the current route pattern.
-            if (preg_match($routeRegex, $requestedRoute, $matches))
-            {
-                // Get all user requested path params values after removing the first matches.
-                array_shift($matches);
-                $routeParamsValues = $matches;
+            if (preg_match($routeRegex, $requestedRoute, $matchValues)) {
+                array_shift($matchValues);
 
-                // Find all route params names from route and save in $routeParamsNames
-                $routeParamsNames = [];
-                if (preg_match_all('/{(\w+)(:[^}]+)?}/', $route, $matches))
-                {
-                    $routeParamsNames = $matches[1];
+                // Extract param names from the route: {id} {slug}
+                $paramNames = [];
+                if (preg_match_all('/{(\w+)(:[^}]+)?}/', $route, $matchNames)) {
+                    $paramNames = $matchNames[1];
                 }
 
-                // Combine between route parameter names and user provided parameter values.
-                $routeParams = array_combine($routeParamsNames, $routeParamsValues);
+                $routeParams = [];
+                if (!empty($paramNames)) {
+                    $routeParams = array_combine($paramNames, $matchValues) ?: [];
+                }
 
-                return  $this->resolveAction($action, $routeParams);
+                return $this->resolveAction($action, $routeParams);
             }
         }
-        return $this->abort('404 Page not found');
+
+        return $this->abort('404 Page not found', 404);
     }
 
     /**
-     * Execute the action for a matched route.
-     * 
-     * @param array|callable $action The action to execute.
-     * @param array $routeParams The parameters extracted from the route.
-     * 
-     * @return mixed The result of the action executed.
+     * Execute matched route action.
      */
-    private function resolveAction($action, $routeParams)
+    private function resolveAction(array|callable $action, array $routeParams): mixed
     {
-        if (is_callable($action))
-        {
-            return call_user_func_array($action, $routeParams);
+        // Closure or any callable function
+        if ($action instanceof Closure || is_callable($action)) {
+            return call_user_func_array($action, array_values($routeParams));
         }
-        else if (is_array($action))
-        {
-            return call_user_func_array([new $action[0], $action[1]], $routeParams);
+
+        // Controller action: [ControllerClass::class, 'method']
+        if (is_array($action) && count($action) === 2) {
+            return call_user_func_array(
+                [new $action[0], $action[1]],
+                array_values($routeParams)
+            );
         }
+
+        return $this->abort('Invalid route action', 500);
     }
 
-    /**
-     * Abort the request with an appropriate message.
-     * 
-     * @param string $message The message to display.
-     * @param int $code HTTP response code.
-     * 
-     */
-    private function abort(string $message, int $code = 404)
+    private function abort(string $message, int $code = 404): void
     {
-
         http_response_code($code);
         echo $message;
         exit();
     }
 }
-
-?>
