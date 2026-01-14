@@ -26,6 +26,11 @@ abstract class User extends BaseModel
 
         return $result ?: null;
     }
+
+    public function findByRole(string $role): array
+    {
+        return $this->where('role', $role);
+    }
     public function createUser(array $data): int
     {
         if (isset($data['password'])) {
