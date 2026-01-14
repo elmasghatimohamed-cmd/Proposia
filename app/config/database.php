@@ -1,5 +1,9 @@
 <?php
 
+namespace App\Config;
+use PDO;
+use PDOException;
+use Exception;
 class Database
 {
     private string $host = "localhost";
