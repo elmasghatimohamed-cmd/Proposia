@@ -18,6 +18,41 @@ abstract class User extends BaseModel
     protected string $role;
     protected ?DateTime $createdAt = null;
 
+    public function __construct(array $data = [])
+    {
+        parent::__construct();
+
+        if (!empty($data)) {
+            $this->hydrate($data);
+        }
+    }
+    protected function hydrate(array $data): void
+    {
+        if (isset($data['id'])) {
+            $this->id = (int) $data['id'];
+        }
+
+        if (isset($data['username'])) {
+            $this->username = $data['username'];
+        }
+
+        if (isset($data['email'])) {
+            $this->email = $data['email'];
+        }
+
+        if (isset($data['password_hash'])) {
+            $this->passwordHash = $data['password_hash'];
+        }
+
+        if (isset($data['role'])) {
+            $this->role = $data['role'];
+        }
+
+        if (isset($data['created_at'])) {
+            $this->createdAt = new DateTime($data['created_at']);
+        }
+    }
+
     public function findByEmail(string $email): ?array
     {
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE email = :email LIMIT 1");
